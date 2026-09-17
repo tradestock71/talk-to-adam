@@ -67,7 +67,7 @@
   </div>
   <script>
     const KEY = "ywa.customer.thread.v1";
-    const BUS = "https://ntfy.sh/inmo-andaluz-adam-talk-coin-2026";
+    const BUS = "https://ntfy.sh/inmo-andaluz-adam-live-v2";
     let thread = null;
     let lastBusId = "";
 
@@ -112,30 +112,52 @@
       return !!last && last.who === who && last.text === text;
     }
 
-    function publish(event) {
+    function makeId(email, name) {
+      const key = String(email || name || "visitor")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+      return "live." + (key || String(Date.now()));
+    }
+
+    function save() {
+      try { localStorage.setItem(KEY, JSON.stringify(thread)); } catch (e) {}
+    }
+
+    function publish(event, tries) {
       fetch(BUS, {
         method: "POST",
         mode: "cors",
         cache: "no-store",
         headers: { "Content-Type": "text/plain" },
         body: JSON.stringify(event),
-      }).catch(() => {});
+      }).catch(() => {
+        if ((tries || 0) < 3) setTimeout(() => publish(event, (tries || 0) + 1), 600);
+      });
+    }
+
+    function pushThread() {
+      if (!thread) return;
+      publish({ type: "upsert", thread: thread });
     }
 
     function applyEvent(event) {
-      if (!event || !event.type) return;
-      if (event.type === "upsert" && event.thread && thread && event.thread.id === thread.id) {
+      if (!event || !event.type || !thread) return;
+      if (event.type === "upsert" && event.thread && (event.thread.id === thread.id || String(event.thread.email || "").toLowerCase() === String(thread.email || "").toLowerCase())) {
         const incoming = event.thread.messages || [];
         if (incoming.length >= (thread.messages || []).length) {
           thread = event.thread;
+          save();
           render();
         }
         return;
       }
-      if (event.type === "msg" && thread && event.id === thread.id && event.text) {
+      if (event.type === "msg" && event.id === thread.id && event.text) {
         if (sameLast(event.who, event.text)) return;
         thread.messages = (thread.messages || []).concat([{ who: event.who, text: event.text }]);
         thread.teaser = event.text;
+        save();
         render();
       }
     }
@@ -173,7 +195,7 @@
       showErr("");
       const first = name.split(" ")[0] || name;
       thread = {
-        id: "live." + Date.now(),
+        id: makeId(email, name),
         name: name,
         phone: phone,
         email: email,
@@ -185,8 +207,8 @@
           { who: "me", text: "Hi " + first + ". You’re looking at the Coín villa. What do you want to know?" },
         ],
       };
-      try { localStorage.setItem(KEY, JSON.stringify(thread)); } catch (e) {}
-      publish({ type: "upsert", thread: thread });
+      save();
+      pushThread();
       openChat();
     };
 
@@ -198,9 +220,9 @@
       if (sameLast("them", text)) return;
       thread.messages.push({ who: "them", text: text });
       thread.teaser = text;
-      try { localStorage.setItem(KEY, JSON.stringify(thread)); } catch (e) {}
+      save();
       render();
-      publish({ type: "msg", id: thread.id, who: "them", text: text });
+      pushThread();
     }
 
     document.getElementById("send").onclick = send;
@@ -212,7 +234,12 @@
       const saved = localStorage.getItem(KEY);
       if (saved) {
         thread = JSON.parse(saved);
-        if (thread && thread.id) openChat();
+        if (thread && thread.id) {
+          if (thread.email) thread.id = makeId(thread.email, thread.name);
+          save();
+          openChat();
+          pushThread();
+        }
       }
     } catch (e) {}
 
