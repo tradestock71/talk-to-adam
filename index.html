@@ -78,13 +78,13 @@
     }
 
     function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, (c) => ({
-        "&": "&",
-        "<": "<",
-        ">": ">",
-        '"': """,
-        "'": "&#39;",
-      }[c]));
+      return String(s).replace(/[&<>"']/g, (c) => {
+        if (c === "&") return "\u0026amp;";
+        if (c === "<") return "\u0026lt;";
+        if (c === ">") return "\u0026gt;";
+        if (c === '"') return "\u0026quot;";
+        return "\u0026#39;";
+      });
     }
 
     function visibleMessages(list) {
