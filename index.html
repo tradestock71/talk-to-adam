@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet" />
-  <script src="https://unpkg.com/mqtt@4.3.8/dist/mqtt.min.js"></script>
   <style>
     :root { --bg:#050505; --card:#121212; --line:#2a2a2a; --text:#f4f4f1; --mute:#8d8d88; --white:#f6f6f3; }
     * { box-sizing: border-box; }
@@ -220,14 +219,23 @@
     }
 
     function startMqtt() {
-      if (!window.mqtt || mqttClient) return;
-      try {
-        mqttClient = window.mqtt.connect(MQTT_URL);
-        mqttClient.on("connect", () => mqttClient.subscribe(MQTT_TOPIC));
-        mqttClient.on("message", (_t, payload) => {
-          try { applyEvent(JSON.parse(payload.toString())); } catch (e) {}
-        });
-      } catch (e) {}
+      if (mqttClient) return;
+      function bind() {
+        if (!window.mqtt || mqttClient) return;
+        try {
+          mqttClient = window.mqtt.connect(MQTT_URL);
+          mqttClient.on("connect", () => mqttClient.subscribe(MQTT_TOPIC));
+          mqttClient.on("message", (_t, payload) => {
+            try { applyEvent(JSON.parse(payload.toString())); } catch (e) {}
+          });
+        } catch (e) {}
+      }
+      if (window.mqtt) { bind(); return; }
+      const s = document.createElement("script");
+      s.src = "https://unpkg.com/mqtt@4.3.8/dist/mqtt.min.js";
+      s.onload = bind;
+      s.onerror = function () {};
+      document.head.appendChild(s);
     }
 
     document.getElementById("start").onclick = () => {
