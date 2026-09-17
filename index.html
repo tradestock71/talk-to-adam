@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Talk to Adam</title>
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg:#050505; --card:#121212; --line:#2a2a2a; --text:#f4f4f1; --mute:#8d8d88; --white:#f6f6f3; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100dvh; background:var(--bg); color:var(--text); font-family:Outfit,system-ui,sans-serif; }
+    .shell { min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:28px 18px 36px; }
+    .panel { width:min(460px,100%); }
+    .meta { color:var(--mute); font-size:13px; letter-spacing:.04em; margin:0 0 8px; }
+    h1 { font-family:Fraunces,Georgia,serif; font-size:26px; font-weight:400; line-height:1.15; margin:0 0 6px; }
+    .facts { color:var(--mute); font-size:14px; margin:0 0 22px; }
+    .intro { font-size:16px; line-height:1.5; color:#d8d8d3; margin:0 0 26px; }
+    .intro strong { color:#fff; font-weight:500; }
+    label { display:block; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); margin:0 0 8px; }
+    .field { margin:0 0 16px; }
+    input { width:100%; background:transparent; border:0; border-bottom:1px solid var(--line); color:var(--text); font:400 16px Outfit,sans-serif; padding:10px 0 12px; outline:none; }
+    input:focus { border-bottom-color:#fff; }
+    .go, .talk { border:0; border-radius:999px; background:var(--white); color:#111; cursor:pointer; }
+    .go { margin-top:22px; width:100%; font:500 16px Outfit,sans-serif; padding:16px 22px; }
+    .who { text-align:center; color:var(--mute); font-size:12px; margin:14px 0 0; }
+    .err { color:#c45c5c; font-size:14px; margin:0 0 12px; }
+    .chat { display:flex; width:min(720px,100%); height:min(78vh,760px); background:var(--card); border-radius:28px; overflow:hidden; flex-direction:column; }
+    .top { padding:18px 22px 16px; border-bottom:1px solid var(--line); }
+    .top h2 { font-family:Fraunces,Georgia,serif; font-size:20px; font-weight:400; margin:0 0 4px; }
+    .top p { margin:0; color:var(--mute); font-size:13px; }
+    .log { flex:1; overflow:auto; padding:22px; display:flex; flex-direction:column; gap:14px; }
+    .msg { max-width:80%; padding:13px 15px; border-radius:18px; font-size:15px; line-height:1.45; white-space:pre-wrap; }
+    .them { align-self:flex-start; background:#1c1c1c; }
+    .me { align-self:flex-end; background:var(--white); color:#111; }
+    .bar { display:flex; gap:10px; padding:14px 16px 16px; border-top:1px solid var(--line); }
+    .bar input { flex:1; border-bottom:0; background:#0a0a0a; border-radius:999px; padding:13px 16px; }
+    .talk { padding:0 18px; font:500 14px Outfit,sans-serif; white-space:nowrap; }
+    .talk:disabled { opacity:.35; }
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="panel" id="form">
+      <p class="meta">Inmo Andaluz</p>
+      <h1>Coín villa</h1>
+      <p class="facts">AFO in place · Talk to Adam</p>
+      <p class="intro">Hi, I’m <strong>Adam</strong>.<br />You’re looking at this Coín villa.<br />If you want to talk, you can talk to me here.<br />First I need your name, telephone and email.</p>
+      <div class="field"><label for="n">Name</label><input id="n" autocomplete="name" /></div>
+      <div class="field"><label for="t">Telephone</label><input id="t" autocomplete="tel" /></div>
+      <div class="field"><label for="m">Email</label><input id="m" autocomplete="email" /></div>
+      <p class="err hidden" id="err"></p>
+      <button class="go" type="button" id="start">Talk to Adam</button>
+      <p class="who">Adam · Inmo Andaluz</p>
+    </section>
+    <section class="chat hidden" id="chat">
+      <div class="top"><h2>Adam</h2><p>Talk to Adam · Coín villa</p></div>
+      <div class="log" id="log"></div>
+      <div class="bar">
+        <input id="draft" autocomplete="off" />
+        <button class="talk" type="button" id="send">Send</button>
+      </div>
+    </section>
+  </div>
+  <script>
+    const KEY = "ywa.customer.thread.v1";
+    const BUS = "https://ntfy.sh/inmo-andaluz-adam-talk-coin-2026";
+    let thread = null;
+    let lastBusId = "";
+
+    function showErr(text) {
+      const el = document.getElementById("err");
+      el.textContent = text;
+      el.classList.toggle("hidden", !text);
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        "&": "&",
+        "<": "<",
+        ">": ">",
+        '"': """,
+        "'": "&#39;",
+      }[c]));
+    }
+
+    function visibleMessages(list) {
+      return (list || []).filter((m, i) => !(i === 0 && m.who === "them" && String(m.text).includes("\n")));
+    }
+
+    function render() {
+      const log = document.getElementById("log");
+      const messages = visibleMessages(thread && thread.messages);
+      log.innerHTML = messages.map((m) =>
+        '<div class="msg ' + (m.who === "them" ? "me" : "them") + '">' + escapeHtml(m.text) + "</div>"
+      ).join("");
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function openChat() {
+      document.getElementById("form").classList.add("hidden");
+      document.getElementById("chat").classList.remove("hidden");
+      render();
+    }
+
+    function sameLast(who, text) {
+      const list = (thread && thread.messages) || [];
+      const last = list[list.length - 1];
+      return !!last && last.who === who && last.text === text;
+    }
+
+    function publish(event) {
+      fetch(BUS, {
+        method: "POST",
+        mode: "cors",
+        cache: "no-store",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(event),
+      }).catch(() => {});
+    }
+
+    function applyEvent(event) {
+      if (!event || !event.type) return;
+      if (event.type === "upsert" && event.thread && thread && event.thread.id === thread.id) {
+        const incoming = event.thread.messages || [];
+        if (incoming.length >= (thread.messages || []).length) {
+          thread = event.thread;
+          render();
+        }
+        return;
+      }
+      if (event.type === "msg" && thread && event.id === thread.id && event.text) {
+        if (sameLast(event.who, event.text)) return;
+        thread.messages = (thread.messages || []).concat([{ who: event.who, text: event.text }]);
+        thread.teaser = event.text;
+        render();
+      }
+    }
+
+    function parseLine(raw) {
+      try {
+        const wrap = JSON.parse(raw);
+        if (wrap && wrap.id) lastBusId = wrap.id;
+        if (wrap && wrap.event && wrap.event !== "message") return;
+        applyEvent(JSON.parse(String(wrap.message || "")));
+      } catch (e) {}
+    }
+
+    async function pull() {
+      const since = lastBusId || "all";
+      try {
+        const res = await fetch(BUS + "/json?poll=1&since=" + encodeURIComponent(since), {
+          cache: "no-store",
+          mode: "cors",
+        });
+        if (!res.ok) return;
+        const text = await res.text();
+        text.split("\n").map((line) => line.trim()).filter(Boolean).forEach(parseLine);
+      } catch (e) {}
+    }
+
+    document.getElementById("start").onclick = () => {
+      const name = document.getElementById("n").value.trim();
+      const phone = document.getElementById("t").value.trim();
+      const email = document.getElementById("m").value.trim();
+      if (!name || !phone || !email) {
+        showErr("Enter your name, telephone and email.");
+        return;
+      }
+      showErr("");
+      const first = name.split(" ")[0] || name;
+      thread = {
+        id: "live." + Date.now(),
+        name: name,
+        phone: phone,
+        email: email,
+        teaser: "New chat from Talk to Adam",
+        meta: "Talk to Adam · Coín villa",
+        takenOver: false,
+        messages: [
+          { who: "them", text: name + "\n" + phone + "\n" + email },
+          { who: "me", text: "Hi " + first + ". You’re looking at the Coín villa. What do you want to know?" },
+        ],
+      };
+      try { localStorage.setItem(KEY, JSON.stringify(thread)); } catch (e) {}
+      publish({ type: "upsert", thread: thread });
+      openChat();
+    };
+
+    async function send() {
+      const box = document.getElementById("draft");
+      const text = box.value.trim();
+      if (!text || !thread) return;
+      box.value = "";
+      if (sameLast("them", text)) return;
+      thread.messages.push({ who: "them", text: text });
+      thread.teaser = text;
+      try { localStorage.setItem(KEY, JSON.stringify(thread)); } catch (e) {}
+      render();
+      publish({ type: "msg", id: thread.id, who: "them", text: text });
+    }
+
+    document.getElementById("send").onclick = send;
+    document.getElementById("draft").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); send(); }
+    });
+
+    try {
+      const saved = localStorage.getItem(KEY);
+      if (saved) {
+        thread = JSON.parse(saved);
+        if (thread && thread.id) openChat();
+      }
+    } catch (e) {}
+
+    try {
+      const stream = new EventSource(BUS + "/sse");
+      stream.onmessage = (event) => parseLine(event.data);
+    } catch (e) {}
+    pull();
+    setInterval(pull, 2000);
+  </script>
+</body>
+</html>
