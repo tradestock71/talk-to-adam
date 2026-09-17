@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/mqtt@4.3.8/dist/mqtt.min.js"></script>
   <style>
     :root { --bg:#050505; --card:#121212; --line:#2a2a2a; --text:#f4f4f1; --mute:#8d8d88; --white:#f6f6f3; }
     * { box-sizing: border-box; }
@@ -67,9 +68,16 @@
   </div>
   <script>
     const KEY = "ywa.customer.thread.v1";
-    const BUS = "https://ntfy.sh/inmo-andaluz-adam-live-v2";
+    const BUSES = [
+      "https://ntfy.sh/inmo-andaluz-adam-live-v2",
+      "https://ntfy.sh/inmo-andaluz-adam-talk-coin-2026",
+      "https://ntfy.envs.net/inmo-andaluz-adam-live-v2",
+    ];
+    const MQTT_URL = "wss://broker.emqx.io:8084/mqtt";
+    const MQTT_TOPIC = "inmo/andaluz/adam/live";
     let thread = null;
-    let lastBusId = "";
+    let lastIds = {};
+    let mqttClient = null;
 
     function showErr(text) {
       const el = document.getElementById("err");
@@ -125,16 +133,42 @@
       try { localStorage.setItem(KEY, JSON.stringify(thread)); } catch (e) {}
     }
 
-    function publish(event, tries) {
-      fetch(BUS, {
+    function mergeMessages(a, b) {
+      const out = (a || []).slice();
+      (b || []).forEach((msg) => {
+        if (!out.some((item) => item.who === msg.who && item.text === msg.text)) out.push(msg);
+      });
+      return out;
+    }
+
+    function matches(incoming) {
+      if (!thread || !incoming) return false;
+      if (incoming.id && (incoming.id === thread.id || incoming.id === thread.altId)) return true;
+      const email = String(incoming.email || "").trim().toLowerCase();
+      if (email && email === String(thread.email || "").trim().toLowerCase()) return true;
+      const name = String(incoming.name || "").trim().toLowerCase();
+      if (name && name === String(thread.name || "").trim().toLowerCase()) return true;
+      return false;
+    }
+
+    function publishOne(url, body, tries) {
+      fetch(url, {
         method: "POST",
         mode: "cors",
         cache: "no-store",
         headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify(event),
+        body: body,
       }).catch(() => {
-        if ((tries || 0) < 3) setTimeout(() => publish(event, (tries || 0) + 1), 600);
+        if ((tries || 0) < 3) setTimeout(() => publishOne(url, body, (tries || 0) + 1), 700);
       });
+    }
+
+    function publish(event) {
+      const body = JSON.stringify(event);
+      BUSES.forEach((url) => publishOne(url, body, 0));
+      try {
+        if (mqttClient && mqttClient.connected) mqttClient.publish(MQTT_TOPIC, body, { qos: 1 });
+      } catch (e) {}
     }
 
     function pushThread() {
@@ -144,16 +178,15 @@
 
     function applyEvent(event) {
       if (!event || !event.type || !thread) return;
-      if (event.type === "upsert" && event.thread && (event.thread.id === thread.id || String(event.thread.email || "").toLowerCase() === String(thread.email || "").toLowerCase())) {
-        const incoming = event.thread.messages || [];
-        if (incoming.length >= (thread.messages || []).length) {
-          thread = event.thread;
-          save();
-          render();
-        }
+      if (event.type === "upsert" && event.thread && matches(event.thread)) {
+        thread.messages = mergeMessages(thread.messages, event.thread.messages);
+        thread.altId = event.thread.id;
+        thread.teaser = thread.messages[thread.messages.length - 1] ? thread.messages[thread.messages.length - 1].text : thread.teaser;
+        save();
+        render();
         return;
       }
-      if (event.type === "msg" && event.id === thread.id && event.text) {
+      if (event.type === "msg" && event.text && (event.id === thread.id || event.id === thread.altId || matches({ id: event.id }))) {
         if (sameLast(event.who, event.text)) return;
         thread.messages = (thread.messages || []).concat([{ who: event.who, text: event.text }]);
         thread.teaser = event.text;
@@ -162,25 +195,38 @@
       }
     }
 
-    function parseLine(raw) {
+    function parseLine(url, raw) {
       try {
         const wrap = JSON.parse(raw);
-        if (wrap && wrap.id) lastBusId = wrap.id;
+        if (wrap && wrap.id) lastIds[url] = wrap.id;
         if (wrap && wrap.event && wrap.event !== "message") return;
         applyEvent(JSON.parse(String(wrap.message || "")));
       } catch (e) {}
     }
 
+    async function pullOne(url) {
+      const since = lastIds[url] || "all";
+      const res = await fetch(url + "/json?poll=1&since=" + encodeURIComponent(since), {
+        cache: "no-store",
+        mode: "cors",
+      });
+      if (!res.ok) return;
+      const text = await res.text();
+      text.split("\n").map((line) => line.trim()).filter(Boolean).forEach((line) => parseLine(url, line));
+    }
+
     async function pull() {
-      const since = lastBusId || "all";
+      await Promise.all(BUSES.map((url) => pullOne(url).catch(() => {})));
+    }
+
+    function startMqtt() {
+      if (!window.mqtt || mqttClient) return;
       try {
-        const res = await fetch(BUS + "/json?poll=1&since=" + encodeURIComponent(since), {
-          cache: "no-store",
-          mode: "cors",
+        mqttClient = window.mqtt.connect(MQTT_URL);
+        mqttClient.on("connect", () => mqttClient.subscribe(MQTT_TOPIC));
+        mqttClient.on("message", (_t, payload) => {
+          try { applyEvent(JSON.parse(payload.toString())); } catch (e) {}
         });
-        if (!res.ok) return;
-        const text = await res.text();
-        text.split("\n").map((line) => line.trim()).filter(Boolean).forEach(parseLine);
       } catch (e) {}
     }
 
@@ -212,7 +258,7 @@
       openChat();
     };
 
-    async function send() {
+    function send() {
       const box = document.getElementById("draft");
       const text = box.value.trim();
       if (!text || !thread) return;
@@ -243,12 +289,15 @@
       }
     } catch (e) {}
 
-    try {
-      const stream = new EventSource(BUS + "/sse");
-      stream.onmessage = (event) => parseLine(event.data);
-    } catch (e) {}
+    startMqtt();
+    BUSES.forEach((url) => {
+      try {
+        const stream = new EventSource(url + "/sse");
+        stream.onmessage = (event) => parseLine(url, event.data);
+      } catch (e) {}
+    });
     pull();
-    setInterval(pull, 2000);
+    setInterval(pull, 1500);
   </script>
 </body>
 </html>
