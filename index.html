@@ -178,7 +178,61 @@
       publish({ type: "upsert", thread: thread });
     }
 
+    const METER_KEY = "ywa.adam.meter.v1";
+    let meterChats = [];
+    let meterReady = false;
+    let countQueued = false;
+    try {
+      const savedMeter = JSON.parse(localStorage.getItem(METER_KEY) || "");
+      if (savedMeter && Array.isArray(savedMeter.chats)) meterChats = savedMeter.chats;
+    } catch (e) {}
+
+    function monthKey() {
+      const d = new Date();
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    }
+
+    function saveMeter() {
+      try { localStorage.setItem(METER_KEY, JSON.stringify({ chats: meterChats })); } catch (e) {}
+    }
+
+    function publishMeter() {
+      const body = JSON.stringify({ type: "meter", chats: meterChats });
+      try {
+        if (mqttClient && mqttClient.connected) mqttClient.publish(MQTT_TOPIC, body, { qos: 1, retain: true });
+      } catch (e) {}
+    }
+
+    function mergeMeter(chats) {
+      if (!Array.isArray(chats)) return;
+      chats.forEach((chat) => {
+        if (!chat || !chat.id || String(chat.id).indexOf("live.") !== 0) return;
+        if (meterChats.some((item) => item.id === chat.id)) return;
+        meterChats.push({ id: chat.id, month: chat.month || monthKey() });
+      });
+      saveMeter();
+    }
+
+    function countThread() {
+      if (!thread || !thread.id) return;
+      if (!meterChats.some((item) => item.id === thread.id)) {
+        meterChats.push({ id: thread.id, month: monthKey() });
+        saveMeter();
+        publishMeter();
+      }
+    }
+
+    function flushCount() {
+      meterReady = true;
+      if (countQueued) countThread();
+    }
+
     function applyEvent(event) {
+      if (event && event.type === "meter") {
+        mergeMeter(event.chats);
+        if (!meterReady) flushCount();
+        return;
+      }
       if (!event || !event.type || !thread) return;
       if (event.type === "upsert" && event.thread && matches(event.thread)) {
         thread.messages = mergeMessages(thread.messages, event.thread.messages);
@@ -233,6 +287,7 @@
               try { mqttClient.publish(MQTT_TOPIC, body, { qos: 1 }); } catch (e) {}
             });
             pushThread();
+            setTimeout(function () { if (!meterReady) flushCount(); }, 1200);
           });
           mqttClient.on("message", (_t, payload) => {
             try { applyEvent(JSON.parse(payload.toString())); } catch (e) {}
@@ -277,6 +332,8 @@
       save();
       pushThread();
       openChat();
+      countQueued = true;
+      if (meterReady) countThread();
     };
 
     function send() {
