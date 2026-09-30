@@ -9,12 +9,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet" />
   <style>
-    :root { --bg:#e4e9ee; --ink:#09161f; --line:#09161f; --text:#09161f; --mute:#3d4a55; --white:#fff; }
+    :root { --bg:#fff; --ink:#09161f; --line:#09161f; --text:#09161f; --mute:#3d4a55; --white:#fff; }
     * { box-sizing: border-box; }
-    body { margin:0; min-height:100dvh; background:var(--bg); color:var(--text); font-family:Outfit,system-ui,sans-serif; }
-    .shell { min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:28px 18px 36px; }
-    .panel, .chat { background:#fff; border-radius:28px; overflow:hidden; box-shadow:0 18px 50px rgba(9,22,31,.16); }
-    .panel { width:min(460px,100%); }
+    body { margin:0; min-height:100dvh; background:#fff; color:var(--text); font-family:Outfit,system-ui,sans-serif; }
+    .shell { min-height:100dvh; display:flex; align-items:stretch; justify-content:center; padding:0; }
+    .panel, .chat { background:#fff; border-radius:0; overflow:hidden; box-shadow:none; }
+    .panel { width:100%; min-height:100dvh; display:flex; flex-direction:column; }
     .brand { background:#09161f; text-align:center; padding:22px 22px 16px; }
     .brand img { width:min(230px,76%); height:auto; display:block; margin:0 auto 8px; }
     .brand p { margin:0; color:#d5dde4; font-size:12px; letter-spacing:.14em; text-transform:uppercase; }
@@ -31,9 +31,9 @@
     .go { margin-top:22px; width:100%; font:500 16px Outfit,sans-serif; padding:16px 22px; }
     .who { text-align:center; color:var(--mute); font-size:12px; margin:14px 0 0; }
     .err { color:#9a3b3b; font-size:14px; margin:0 0 12px; }
-    .chat { display:flex; width:min(720px,100%); height:min(78vh,760px); flex-direction:column; }
+    .chat { display:flex; width:100%; height:100dvh; flex-direction:column; }
     .fresh { margin-top:10px; background:none; border:0; padding:0; color:#d5dde4; font:inherit; font-size:13px; text-decoration:underline; cursor:pointer; }
-    .log { flex:1; overflow:auto; padding:22px; display:flex; flex-direction:column; gap:14px; background:#f7f8fa; }
+    .log { flex:1; overflow:auto; padding:22px; display:flex; flex-direction:column; gap:14px; background:#e4e9ee; }
     .msg { max-width:80%; padding:13px 15px; border-radius:18px; font-size:15px; line-height:1.45; white-space:pre-wrap; }
     .them { align-self:flex-start; background:#fff; color:#09161f; border:1px solid #09161f; }
     .me { align-self:flex-end; background:#09161f; color:#fff; }
