@@ -46,9 +46,8 @@
   <div class="shell">
     <section class="panel" id="form">
       <p class="meta">Inmo Andaluz</p>
-      <h1>Coín villa</h1>
-      <p class="facts">AFO in place · Talk to Adam</p>
-      <p class="intro">Hi, I’m <strong>Adam</strong>.<br />You’re looking at this Coín villa.<br />If you want to talk, you can talk to me here.<br />First I need your name, telephone and email.</p>
+      <h1>Talk to Adam</h1>
+      <p class="intro">Hi, I’m <strong>Adam</strong>.<br />If you want to talk, you can talk to me here.<br />First I need your name, telephone and email.</p>
       <div class="field"><label for="n">Name</label><input id="n" autocomplete="name" /></div>
       <div class="field"><label for="t">Telephone</label><input id="t" autocomplete="tel" /></div>
       <div class="field"><label for="m">Email</label><input id="m" autocomplete="email" /></div>
@@ -57,7 +56,7 @@
       <p class="who">Adam · Inmo Andaluz</p>
     </section>
     <section class="chat hidden" id="chat">
-      <div class="top"><h2>Adam</h2><p>Talk to Adam · Coín villa</p></div>
+      <div class="top"><h2>Adam</h2><p>Talk to Adam</p></div>
       <div class="log" id="log"></div>
       <div class="bar">
         <input id="draft" autocomplete="off" />
@@ -264,11 +263,11 @@
         phone: phone,
         email: email,
         teaser: "New chat from Talk to Adam",
-        meta: "Talk to Adam · Coín villa",
+        meta: "Talk to Adam",
         takenOver: false,
         messages: [
           { who: "them", text: name + "\n" + phone + "\n" + email },
-          { who: "me", text: "Hi " + first + ". You’re looking at the Coín villa. What do you want to know?" },
+          { who: "me", text: "Hi " + first + ". What do you want to know?" },
         ],
       };
       save();
