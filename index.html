@@ -59,7 +59,7 @@
       <div class="top"><h2>Adam</h2><p>Talk to Adam</p></div>
       <div class="log" id="log"></div>
       <div class="bar">
-        <input id="draft" autocomplete="off" />
+        <input id="draft" autocomplete="off" placeholder="Type a message" />
         <button class="talk" type="button" id="send">Send</button>
       </div>
     </section>
@@ -247,6 +247,11 @@
       document.head.appendChild(s);
     }
 
+    function hello(name) {
+      const first = String(name || "there").trim().split(" ")[0] || "there";
+      return "Hi " + first + ". You’re now talking to Adam. Type your message below.";
+    }
+
     document.getElementById("start").onclick = () => {
       const name = document.getElementById("n").value.trim();
       const phone = document.getElementById("t").value.trim();
@@ -256,7 +261,6 @@
         return;
       }
       showErr("");
-      const first = name.split(" ")[0] || name;
       thread = {
         id: makeId(email, name),
         name: name,
@@ -267,7 +271,7 @@
         takenOver: false,
         messages: [
           { who: "them", text: name + "\n" + phone + "\n" + email },
-          { who: "me", text: "Hi " + first + ". What do you want to know?" },
+          { who: "me", text: hello(name) },
         ],
       };
       save();
@@ -299,6 +303,10 @@
         thread = JSON.parse(saved);
         if (thread && thread.id) {
           if (thread.email) thread.id = makeId(thread.email, thread.name);
+          const opener = (thread.messages || []).find((m) => m.who === "me");
+          if (opener && /villa|co[ií]n|what do you want to know/i.test(opener.text)) {
+            opener.text = hello(thread.name);
+          }
           save();
           openChat();
           pushThread();
