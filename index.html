@@ -31,6 +31,7 @@
     .top { padding:18px 22px 16px; border-bottom:1px solid var(--line); }
     .top h2 { font-family:Fraunces,Georgia,serif; font-size:20px; font-weight:400; margin:0 0 4px; }
     .top p { margin:0; color:var(--mute); font-size:13px; }
+    .fresh { margin-top:10px; background:none; border:0; padding:0; color:var(--mute); font:inherit; font-size:13px; text-decoration:underline; cursor:pointer; }
     .log { flex:1; overflow:auto; padding:22px; display:flex; flex-direction:column; gap:14px; }
     .msg { max-width:80%; padding:13px 15px; border-radius:18px; font-size:15px; line-height:1.45; white-space:pre-wrap; }
     .them { align-self:flex-start; background:#1c1c1c; }
@@ -56,7 +57,7 @@
       <p class="who">Adam · Inmo Andaluz</p>
     </section>
     <section class="chat hidden" id="chat">
-      <div class="top"><h2>Inmo Andaluz</h2><p>Talk to Adam</p></div>
+      <div class="top"><h2>Inmo Andaluz</h2><p>Talk to Adam</p><button class="fresh" type="button" id="fresh">New person</button></div>
       <div class="log" id="log"></div>
       <div class="bar">
         <input id="draft" autocomplete="off" placeholder="Type a message" />
@@ -354,7 +355,22 @@
       if (e.key === "Enter") { e.preventDefault(); send(); }
     });
 
-    try {
+    function showForm() {
+      thread = null;
+      try { localStorage.removeItem(KEY); } catch (e) {}
+      document.getElementById("chat").classList.add("hidden");
+      document.getElementById("form").classList.remove("hidden");
+      document.getElementById("n").value = "";
+      document.getElementById("t").value = "";
+      document.getElementById("m").value = "";
+    }
+
+    document.getElementById("fresh").onclick = showForm;
+
+    const freshVisit = /(?:^|[?&])new=1(?:&|$)/.test(location.search);
+    if (freshVisit) {
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    } else try {
       const saved = localStorage.getItem(KEY);
       if (saved) {
         thread = JSON.parse(saved);
