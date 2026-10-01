@@ -83,6 +83,30 @@
     ];
     const MQTT_URL = "wss://broker.emqx.io:8084/mqtt";
     const MQTT_TOPIC = "inmo/andaluz/adam/live";
+    function param(key) {
+      try { return new URLSearchParams(location.search).get(key) || ""; } catch (e) { return ""; }
+    }
+    function houseTitle(url) {
+      try {
+        const parsed = new URL(url);
+        const parts = parsed.pathname.split("/").filter(Boolean);
+        const last = decodeURIComponent(parts[parts.length - 1] || "").replace(/[-_]+/g, " ").trim();
+        if (!last || last.length > 42 || /property details|^\d+$/i.test(last)) return "";
+        return last;
+      } catch (e) { return ""; }
+    }
+    const houseUrl = param("house");
+    const placeName = param("place").trim() || houseTitle(houseUrl);
+    const houseLine = placeName || (houseUrl ? "one of Adam's houses" : "");
+    if (houseLine) {
+      const intro = document.querySelector("#form .intro");
+      intro.textContent = "";
+      const line = document.createElement("span");
+      line.textContent = "You are looking at " + houseLine + ".";
+      intro.appendChild(line);
+      intro.appendChild(document.createElement("br"));
+      intro.appendChild(document.createTextNode("First I need your name, telephone and email."));
+    }
     let thread = null;
     let lastIds = {};
     let mqttClient = null;
@@ -314,6 +338,7 @@
 
     function hello(name) {
       const first = String(name || "there").trim().split(" ")[0] || "there";
+      if (houseLine) return "Hi " + first + ". You are looking at " + houseLine + ". What would you like to know?";
       return "Hi " + first + ". You’re now talking to Adam. Type your message below.";
     }
 
@@ -331,8 +356,8 @@
         name: name,
         phone: phone,
         email: email,
-        teaser: "New chat from Talk to Adam",
-        meta: "Talk to Adam",
+        teaser: houseLine || "New chat from Talk to Adam",
+        meta: placeName || (houseUrl ? "House" : "Talk to Adam"),
         takenOver: false,
         messages: [
           { who: "them", text: name + "\n" + phone + "\n" + email },
