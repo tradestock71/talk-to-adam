@@ -32,7 +32,6 @@
     .who { text-align:center; color:var(--mute); font-size:12px; margin:14px 0 0; }
     .err { color:#9a3b3b; font-size:14px; margin:0 0 12px; }
     .chat { display:flex; height:calc(100dvh - 44px); flex-direction:column; }
-    .fresh { margin-top:10px; background:none; border:0; padding:0; color:#d5dde4; font:inherit; font-size:13px; text-decoration:underline; cursor:pointer; }
     .log { flex:1; overflow:auto; padding:22px; display:flex; flex-direction:column; gap:14px; background:#c5ccd4; }
     .msg { max-width:80%; padding:13px 15px; border-radius:18px; font-size:15px; line-height:1.45; white-space:pre-wrap; }
     .them { align-self:flex-start; background:#fff; color:#09161f; border:1px solid #09161f; }
@@ -68,7 +67,6 @@
       <header class="brand">
         <img src="logo.svg" alt="Inmo Andaluz" />
         <p>Talk to Adam</p>
-        <button class="fresh" type="button" id="fresh">New person</button>
       </header>
       <div class="log" id="log"></div>
       <div class="bar">
@@ -416,18 +414,6 @@
     document.getElementById("draft").addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); send(); }
     });
-
-    function showForm() {
-      thread = null;
-      try { localStorage.removeItem(KEY); } catch (e) {}
-      document.getElementById("chat").classList.add("hidden");
-      document.getElementById("form").classList.remove("hidden");
-      document.getElementById("n").value = "";
-      document.getElementById("t").value = "";
-      document.getElementById("m").value = "";
-    }
-
-    document.getElementById("fresh").onclick = showForm;
 
     const freshVisit = /(?:^|[?&])new=1(?:&|$)/.test(location.search);
     if (freshVisit) {
