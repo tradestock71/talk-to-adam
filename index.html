@@ -337,9 +337,9 @@
     }
 
     function hello(name) {
-      const first = String(name || "there").trim().split(" ")[0] || "there";
-      if (houseLine) return "Hi " + first + ". You are looking at " + houseLine + ". What would you like to know?";
-      return "Hi " + first + ". You’re now talking to Adam. Type your message below.";
+      const who = String(name || "there").trim().replace(/\s+/g, " ") || "there";
+      if (houseLine) return "Hi " + who + ". You are looking at " + houseLine + ". What would you like to know?";
+      return "Hi " + who + ". You’re now talking to Adam. Type your message below.";
     }
 
     document.getElementById("start").onclick = () => {
