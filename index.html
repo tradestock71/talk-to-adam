@@ -41,6 +41,8 @@
     .bar input { flex:1; border:1px solid #09161f; border-bottom:1px solid #09161f; background:#fff; border-radius:999px; padding:13px 16px; color:#09161f; }
     .talk { padding:0 18px; font:500 14px Outfit,sans-serif; white-space:nowrap; }
     .talk:disabled { opacity:.35; }
+    .house-shot { width:100%; height:190px; object-fit:cover; display:block; background:#d5dde4; }
+    .sheet .house-shot { height:200px; border-radius:16px; margin:0 0 16px; }
     .hidden { display:none !important; }
   </style>
 </head>
@@ -52,6 +54,7 @@
         <p>Talk to Adam</p>
       </header>
       <div class="sheet">
+      <img class="house-shot hidden" id="shot-form" alt="" />
       <p class="intro">Hi, I’m <strong>Adam</strong>.<br />If you want to talk, you can talk to me here.<br />First I need your name, telephone and email.</p>
       <div class="field"><label for="n">Name</label><input id="n" autocomplete="name" /></div>
       <div class="field"><label for="t">Telephone</label><input id="t" autocomplete="tel" /></div>
@@ -67,6 +70,7 @@
         <p>Talk to Adam</p>
         <button class="fresh" type="button" id="fresh">New person</button>
       </header>
+      <img class="house-shot hidden" id="shot-chat" alt="" />
       <div class="log" id="log"></div>
       <div class="bar">
         <input id="draft" autocomplete="off" placeholder="Type a message" />
@@ -98,6 +102,32 @@
     const houseUrl = param("house");
     const placeName = param("place").trim() || houseTitle(houseUrl);
     const houseLine = placeName || (houseUrl ? "one of Adam's houses" : "");
+    function safePhoto(url) {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return "";
+        return parsed.toString();
+      } catch (e) { return ""; }
+    }
+    function showPhoto(url) {
+      const src = safePhoto(url);
+      if (!src) return;
+      ["shot-form", "shot-chat"].forEach((id) => {
+        const img = document.getElementById(id);
+        if (!img) return;
+        img.referrerPolicy = "no-referrer";
+        img.alt = houseLine || "House";
+        img.onerror = function () { img.classList.add("hidden"); };
+        img.src = src;
+        img.classList.remove("hidden");
+      });
+    }
+    if (houseUrl) {
+      fetch("https://your-work-agent.vercel.app/api/house-photo?url=" + encodeURIComponent(houseUrl))
+        .then((res) => res.json())
+        .then((data) => showPhoto(data && data.image))
+        .catch(function () {});
+    }
     if (houseLine) {
       const intro = document.querySelector("#form .intro");
       intro.textContent = "";
