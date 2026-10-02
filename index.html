@@ -70,7 +70,6 @@
         <p>Talk to Adam</p>
         <button class="fresh" type="button" id="fresh">New person</button>
       </header>
-      <img class="house-shot hidden" id="shot-chat" alt="" />
       <div class="log" id="log"></div>
       <div class="bar">
         <input id="draft" autocomplete="off" placeholder="Type a message" />
@@ -111,16 +110,13 @@
     }
     function showPhoto(url) {
       const src = safePhoto(url);
-      if (!src) return;
-      ["shot-form", "shot-chat"].forEach((id) => {
-        const img = document.getElementById(id);
-        if (!img) return;
-        img.referrerPolicy = "no-referrer";
-        img.alt = houseLine || "House";
-        img.onerror = function () { img.classList.add("hidden"); };
-        img.src = src;
-        img.classList.remove("hidden");
-      });
+      const img = document.getElementById("shot-form");
+      if (!src || !img) return;
+      img.referrerPolicy = "no-referrer";
+      img.alt = houseLine || "House";
+      img.onerror = function () { img.classList.add("hidden"); };
+      img.src = src;
+      img.classList.remove("hidden");
     }
     if (houseUrl) {
       try {
