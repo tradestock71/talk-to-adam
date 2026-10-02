@@ -123,7 +123,7 @@
       });
     }
     if (houseUrl) {
-      fetch("https://your-work-agent.vercel.app/api/house-photo?url=" + encodeURIComponent(houseUrl))
+      fetch("https://your-work-agent.vercel.app/api/house-photo?v=2&url=" + encodeURIComponent(houseUrl))
         .then((res) => res.json())
         .then((data) => showPhoto(data && data.image))
         .catch(function () {});
