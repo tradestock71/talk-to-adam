@@ -42,7 +42,7 @@
     .talk { padding:0 18px; font:500 14px Outfit,sans-serif; white-space:nowrap; }
     .talk:disabled { opacity:.35; }
     .house-shot { width:100%; height:230px; object-fit:cover; object-position:center 62%; display:block; background:#c5ccd4; }
-    .sheet .house-shot { height:104px; border-radius:16px; margin:0 0 10px; }
+    .sheet .house-shot { height:125px; border-radius:16px; margin:0 0 10px; }
     .hidden { display:none !important; }
   </style>
 </head>
@@ -130,8 +130,9 @@
       intro.textContent = "";
       const line = document.createElement("span");
       line.textContent = "You are looking at " + houseLine + ".";
+      line.style.display = "block";
+      line.style.marginBottom = "1em";
       intro.appendChild(line);
-      intro.appendChild(document.createElement("br"));
       intro.appendChild(document.createTextNode("First I need your name, telephone and email."));
     }
     let thread = null;
