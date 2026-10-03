@@ -226,11 +226,12 @@
       const body = JSON.stringify(event);
       BUSES.forEach((url) => publishOne(url, body, 0));
       try {
-        if (mqttClient && mqttClient.connected) mqttClient.publish(MQTT_TOPIC, body, { qos: 1 });
-        else pendingPub.push(body);
-      } catch (e) {
-        pendingPub.push(body);
-      }
+        if (mqttClient) {
+          mqttClient.publish(MQTT_TOPIC, body, { qos: 1 });
+          return;
+        }
+      } catch (e) {}
+      pendingPub.push(body);
     }
 
     function pushThread() {
@@ -343,10 +344,12 @@
           mqttClient = window.mqtt.connect(MQTT_URL);
           mqttClient.on("connect", () => {
             mqttClient.subscribe(MQTT_TOPIC);
-            pendingPub.splice(0).forEach((body) => {
-              try { mqttClient.publish(MQTT_TOPIC, body, { qos: 1 }); } catch (e) {}
+            const queued = pendingPub.splice(0);
+            queued.forEach((body) => {
+              try { mqttClient.publish(MQTT_TOPIC, body, { qos: 1 }); } catch (e) { pendingPub.push(body); }
             });
             pushThread();
+            setTimeout(pushThread, 400);
             setTimeout(function () { if (!meterReady) flushCount(); }, 1200);
           });
           mqttClient.on("message", (_t, payload) => {
@@ -392,6 +395,8 @@
       };
       save();
       pushThread();
+      setTimeout(pushThread, 400);
+      setTimeout(pushThread, 1500);
       openChat();
       countQueued = true;
       if (meterReady) countThread();
