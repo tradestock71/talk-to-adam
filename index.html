@@ -247,6 +247,7 @@
       pushThread();
       setTimeout(pushThread, 600);
       setTimeout(pushThread, 1800);
+      setTimeout(pushThread, 4000);
     }
 
     const METER_KEY = "ywa.adam.meter.v1";
@@ -398,6 +399,7 @@
         teaser: houseLine || "New chat from Talk to Adam",
         meta: placeName || (houseUrl ? "House" : "Talk to Adam"),
         takenOver: false,
+        started: Date.now(),
         messages: [
           { who: "them", text: name },
           { who: "me", text: hello(name) },
@@ -465,11 +467,13 @@
     }, { passive: true });
     document.addEventListener("touchmove", (e) => {
       const y = e.touches[0].clientY;
-      const pullingDown = y > touchY;
+      const pullingDown = y - touchY > 16;
       touchY = y;
+      const target = e.target;
+      if (target && target.closest && target.closest("button, input, textarea, a, label")) return;
       const log = document.getElementById("log");
       const sheet = document.querySelector("#form .sheet");
-      const box = log && log.contains(e.target) ? log : sheet && sheet.contains(e.target) ? sheet : null;
+      const box = log && log.contains(target) ? log : sheet && sheet.contains(target) ? sheet : null;
       if (pullingDown && (!box || box.scrollTop <= 0)) e.preventDefault();
     }, { passive: false });
   </script>
