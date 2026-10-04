@@ -278,8 +278,29 @@
       postDesk();
     }
 
+    function meterId() {
+      if (!thread || !thread.id) return "";
+      return thread.started ? thread.id + "." + thread.started : thread.id;
+    }
+
+    function applyAccountThreads(rows) {
+      if (!thread || !Array.isArray(rows)) return;
+      const found = rows.find((row) => row && (row.id === thread.id || row.id === thread.altId))
+        || rows.find((row) => matches(row));
+      if (!found || !Array.isArray(found.messages)) return;
+      const before = (thread.messages || []).length;
+      thread.messages = mergeMessages(thread.messages, found.messages);
+      if (found.id) thread.altId = found.id;
+      if ((thread.messages || []).length === before) return;
+      const last = thread.messages[thread.messages.length - 1];
+      thread.teaser = last ? last.text : thread.teaser;
+      save();
+      render();
+    }
+
     function postDesk() {
       if (!thread || !thread.id) return;
+      const id = meterId();
       fetch("https://your-work-agent.vercel.app/api/adam-desk", {
         method: "POST",
         mode: "cors",
@@ -292,10 +313,22 @@
           threads: [thread],
           houses: [],
           seen: {},
-          meter: [{ id: thread.id, month: monthKey() }],
+          meter: id ? [{ id: id, month: monthKey() }] : [],
           droppedHouses: [],
         }),
+      }).then((res) => (res.ok ? res.json() : null)).then((doc) => {
+        if (doc) applyAccountThreads(doc.threads);
       }).catch(function () {});
+    }
+
+    async function pullDesk() {
+      if (!thread) return;
+      try {
+        const res = await fetch("https://your-work-agent.vercel.app/api/adam-desk", { cache: "no-store", mode: "cors" });
+        if (!res.ok) return;
+        const doc = await res.json();
+        applyAccountThreads(doc.threads);
+      } catch (e) {}
     }
 
     function nudge() {
@@ -509,7 +542,9 @@
       } catch (e) {}
     });
     pull();
+    pullDesk();
     setInterval(pull, 1500);
+    setInterval(pullDesk, 2000);
 
     let touchY = 0;
     document.addEventListener("touchstart", (e) => {
