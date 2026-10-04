@@ -41,8 +41,9 @@
     .bar input { flex:1; border:1px solid #09161f; border-bottom:1px solid #09161f; background:#fff; border-radius:999px; padding:13px 16px; color:#09161f; }
     .talk { padding:0 18px; font:500 14px Outfit,sans-serif; white-space:nowrap; }
     .talk:disabled { opacity:.35; }
-    .shot-frame { width:100%; max-height:210px; aspect-ratio:900 / 460; overflow:hidden; border-radius:16px; margin:0 0 10px; background:#c5ccd4; }
-    .shot-frame img { width:100%; height:auto; display:block; margin-top:calc(80 / 900 * -100%); }
+    .shot-frame { width:100%; max-height:210px; aspect-ratio:900 / 597; overflow:hidden; border-radius:16px; margin:0 0 10px; background:#c5ccd4; }
+    .shot-frame img { width:100%; height:auto; display:block; margin-top:calc(78 / 900 * -100%); }
+    .shot-frame img.fallback { margin-top:0; height:100%; object-fit:cover; object-position:center 42%; }
     .hidden { display:none !important; }
   </style>
 </head>
@@ -107,23 +108,56 @@
         return parsed.toString();
       } catch (e) { return ""; }
     }
-    function showPhoto(url) {
-      const src = safePhoto(url);
+    function showPhoto(page) {
       const img = document.getElementById("shot-form");
       const frame = document.getElementById("shot-frame");
-      if (!src || !img || !frame) return;
-      img.referrerPolicy = "no-referrer";
-      img.alt = houseLine || "House";
-      img.onload = function () { frame.classList.remove("hidden"); };
-      img.onerror = function () { frame.classList.add("hidden"); };
-      img.src = src;
+      const raw = page.toString();
+      const shots = [
+        "https://s.wordpress.com/mshots/v1/" + encodeURIComponent(raw) + "?w=900",
+        "https://api.microlink.io/?url=" + encodeURIComponent(raw) + "&screenshot=true&meta=false&embed=screenshot.url"
+      ];
+      if (!img || !frame) return;
+      let which = 0;
+      let tries = 0;
+      function place() {
+        const src = safePhoto(shots[which]);
+        if (!src) return;
+        img.referrerPolicy = "no-referrer";
+        img.alt = houseLine || "House";
+        img.classList.toggle("fallback", which > 0);
+        img.onload = function () {
+          if (which === 0 && img.naturalWidth && img.naturalWidth < 800 && tries < 4) {
+            tries += 1;
+            setTimeout(function () {
+              img.removeAttribute("src");
+              img.src = src;
+            }, 1500);
+            return;
+          }
+          if (which === 0 && img.naturalWidth && img.naturalWidth < 800) {
+            which = 1;
+            tries = 0;
+            place();
+            return;
+          }
+          frame.classList.remove("hidden");
+        };
+        img.onerror = function () {
+          frame.classList.add("hidden");
+          if (which === 0) {
+            which = 1;
+            tries = 0;
+            place();
+          }
+        };
+        img.src = src;
+      }
+      place();
     }
     if (houseUrl) {
       try {
         const page = new URL(houseUrl);
-        if (page.protocol === "https:" || page.protocol === "http:") {
-          showPhoto("https://image.thum.io/get/png/width/900/crop/720/" + page.toString());
-        }
+        if (page.protocol === "https:" || page.protocol === "http:") showPhoto(page);
       } catch (e) {}
     }
     if (houseLine) {
