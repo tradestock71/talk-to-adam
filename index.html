@@ -124,7 +124,7 @@
       try {
         const page = new URL(houseUrl);
         if (page.protocol === "https:" || page.protocol === "http:") {
-          showPhoto("/api/house-shot?url=" + encodeURIComponent(page.toString()));
+          showPhoto("/api/house-shot?v=2&url=" + encodeURIComponent(page.toString()));
         }
       } catch (e) {}
     }
