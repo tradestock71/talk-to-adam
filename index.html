@@ -41,8 +41,7 @@
     .bar input { flex:1; border:1px solid #09161f; border-bottom:1px solid #09161f; background:#fff; border-radius:999px; padding:13px 16px; color:#09161f; }
     .talk { padding:0 18px; font:500 14px Outfit,sans-serif; white-space:nowrap; }
     .talk:disabled { opacity:.35; }
-    .house-shot { width:100%; height:190px; object-fit:cover; object-position:center 28%; display:block; background:#c5ccd4; flex:0 0 auto; }
-    .sheet .house-shot { height:125px; border-radius:16px; margin:0 0 10px; }
+    .sheet .house-shot { width:100%; height:auto; max-height:230px; object-fit:contain; object-position:center top; border-radius:16px; display:block; margin:0 0 10px; background:#c5ccd4; }
     .hidden { display:none !important; }
   </style>
 </head>
@@ -69,7 +68,6 @@
         <img src="logo.svg" alt="Inmo Andaluz" />
         <p>Talk to Adam</p>
       </header>
-      <img class="house-shot hidden" id="shot-chat" alt="" />
       <div class="log" id="log"></div>
       <div class="bar">
         <input id="draft" autocomplete="off" placeholder="Type a message" />
@@ -110,21 +108,19 @@
     }
     function showPhoto(url) {
       const src = safePhoto(url);
-      ["shot-form", "shot-chat"].forEach(function (id) {
-        const img = document.getElementById(id);
-        if (!src || !img) return;
-        img.referrerPolicy = "no-referrer";
-        img.alt = houseLine || "House";
-        img.onload = function () { img.classList.remove("hidden"); };
-        img.onerror = function () { img.classList.add("hidden"); };
-        img.src = src;
-      });
+      const img = document.getElementById("shot-form");
+      if (!src || !img) return;
+      img.referrerPolicy = "no-referrer";
+      img.alt = houseLine || "House";
+      img.onload = function () { img.classList.remove("hidden"); };
+      img.onerror = function () { img.classList.add("hidden"); };
+      img.src = src;
     }
     if (houseUrl) {
       try {
         const page = new URL(houseUrl);
         if (page.protocol === "https:" || page.protocol === "http:") {
-          showPhoto("https://image.thum.io/get/png/width/900/" + page.toString());
+          showPhoto("https://image.thum.io/get/png/width/900/crop/720/" + page.toString());
         }
       } catch (e) {}
     }
