@@ -41,7 +41,8 @@
     .bar input { flex:1; border:1px solid #09161f; border-bottom:1px solid #09161f; background:#fff; border-radius:999px; padding:13px 16px; color:#09161f; }
     .talk { padding:0 18px; font:500 14px Outfit,sans-serif; white-space:nowrap; }
     .talk:disabled { opacity:.35; }
-    .sheet .house-shot { width:100%; height:auto; max-height:230px; object-fit:contain; object-position:center top; border-radius:16px; display:block; margin:0 0 10px; background:#c5ccd4; }
+    .shot-frame { width:100%; max-height:210px; aspect-ratio:900 / 460; overflow:hidden; border-radius:16px; margin:0 0 10px; background:#c5ccd4; }
+    .shot-frame img { width:100%; height:auto; display:block; margin-top:calc(80 / 900 * -100%); }
     .hidden { display:none !important; }
   </style>
 </head>
@@ -53,7 +54,7 @@
         <p>Talk to Adam</p>
       </header>
       <div class="sheet">
-      <img class="house-shot hidden" id="shot-form" alt="" />
+      <div class="shot-frame hidden" id="shot-frame"><img id="shot-form" alt="" /></div>
       <p class="intro">Hi, I’m <strong>Adam</strong>.<br />If you want to talk, you can talk to me here.<br />First I need your name, telephone and email.</p>
       <div class="field"><label for="n">Name</label><input id="n" autocomplete="name" /></div>
       <div class="field"><label for="t">Telephone</label><input id="t" autocomplete="tel" /></div>
@@ -109,11 +110,12 @@
     function showPhoto(url) {
       const src = safePhoto(url);
       const img = document.getElementById("shot-form");
-      if (!src || !img) return;
+      const frame = document.getElementById("shot-frame");
+      if (!src || !img || !frame) return;
       img.referrerPolicy = "no-referrer";
       img.alt = houseLine || "House";
-      img.onload = function () { img.classList.remove("hidden"); };
-      img.onerror = function () { img.classList.add("hidden"); };
+      img.onload = function () { frame.classList.remove("hidden"); };
+      img.onerror = function () { frame.classList.add("hidden"); };
       img.src = src;
     }
     if (houseUrl) {
