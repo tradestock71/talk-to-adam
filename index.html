@@ -468,17 +468,10 @@
     function phoneNote(text) {
       const body = String(text || "").replace(/\s+/g, " ").trim().slice(0, 140);
       if (!body) return;
-      fetch("https://ntfy.sh/", {
+      fetch("https://ntfy.sh/inmoandaluz", {
         method: "POST",
-        mode: "cors",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          topic: "inmoandaluz",
-          title: "Desk",
-          message: body,
-          click: "https://your-work-agent.vercel.app/desk",
-          tags: ["speech_balloon"],
-        }),
+        mode: "no-cors",
+        body: body + "\nhttps://your-work-agent.vercel.app/desk",
       }).catch(function () {});
     }
 
