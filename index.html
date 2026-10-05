@@ -468,18 +468,22 @@
     function phoneNote(text) {
       const body = String(text || "").replace(/\s+/g, " ").trim().slice(0, 140);
       if (!body) return;
-      fetch("https://ntfy.sh/", {
-        method: "POST",
-        mode: "cors",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          topic: "inmoandaluz",
-          title: "Desk",
-          message: body,
-          click: "https://your-work-agent.vercel.app/desk",
-          tags: ["speech_balloon"],
-        }),
-      }).catch(function () {});
+      const frame = document.createElement("iframe");
+      frame.name = "phone-note";
+      frame.hidden = true;
+      document.body.appendChild(frame);
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "https://ntfy.sh/inmoandaluz";
+      form.target = "phone-note";
+      form.enctype = "text/plain";
+      const field = document.createElement("input");
+      field.type = "hidden";
+      field.name = body;
+      field.value = "https://your-work-agent.vercel.app/desk";
+      form.appendChild(field);
+      document.body.appendChild(form);
+      form.submit();
     }
 
     document.getElementById("start").onclick = () => {
