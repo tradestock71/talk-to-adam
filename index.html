@@ -465,6 +465,23 @@
       return "Hi " + who + ". You’re now talking to Adam. Type your message below.";
     }
 
+    function phoneNote(text) {
+      const body = String(text || "").replace(/\s+/g, " ").trim().slice(0, 140);
+      if (!body) return;
+      fetch("https://ntfy.sh/", {
+        method: "POST",
+        mode: "cors",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          topic: "inmoandaluz",
+          title: "Desk",
+          message: body,
+          click: "https://your-work-agent.vercel.app/desk",
+          tags: ["speech_balloon"],
+        }),
+      }).catch(function () {});
+    }
+
     document.getElementById("start").onclick = () => {
       const name = document.getElementById("n").value.trim();
       const phone = document.getElementById("t").value.trim();
@@ -490,6 +507,7 @@
       };
       save();
       nudge();
+      phoneNote("New chat from " + name);
       openChat();
       countQueued = true;
       if (meterReady) countThread();
@@ -506,6 +524,7 @@
       save();
       render();
       nudge();
+      phoneNote(thread.name + ": " + text);
     }
 
     document.getElementById("send").onclick = send;
