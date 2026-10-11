@@ -425,19 +425,84 @@
       } catch (e) {}
     }
 
-    async function pullOne(url) {
-      const since = lastIds[url] || "all";
-      const res = await fetch(url + "/json?poll=1&since=" + encodeURIComponent(since), {
+    // Bus reads, grouped per server so ntfy.sh gets one request for both topics
+    // (e.g. https://ntfy.sh/a,b). ntfy.sh allows 60 requests then 1 per 5s per IP,
+    // so: live stream first, a poll every ~6s only when the stream is quiet,
+    // back off on 429, and pause while the tab is hidden. MQTT and the desk pull
+    // still deliver replies as before.
+    const POLL_MS = 6000;
+    const STREAM_FRESH_MS = 60000;
+    const busGroups = (function () {
+      const map = {};
+      BUSES.forEach((url) => {
+        const cut = url.lastIndexOf("/");
+        const host = url.slice(0, cut);
+        (map[host] = map[host] || []).push(url.slice(cut + 1));
+      });
+      return Object.keys(map).map((host) => ({
+        url: host + "/" + map[host].join(","),
+        since: "",
+        seenIds: [],
+        lastStream: 0,
+        stream: null,
+        backoff: 0,
+        nextAt: 0,
+      }));
+    })();
+
+    function takeBusLine(group, raw) {
+      try {
+        const wrap = JSON.parse(raw);
+        if (!wrap) return;
+        if (wrap.id) {
+          if (group.seenIds.indexOf(wrap.id) >= 0) return;
+          group.seenIds.push(wrap.id);
+          if (group.seenIds.length > 300) group.seenIds.splice(0, 100);
+        }
+        if (wrap.time) group.since = String(wrap.time);
+        if (wrap.event && wrap.event !== "message") return;
+        applyEvent(JSON.parse(String(wrap.message || "")));
+      } catch (e) {}
+    }
+
+    async function pullGroup(group, force) {
+      const now = Date.now();
+      if (now < group.nextAt) return;
+      const live = group.stream && group.stream.readyState === 1 && now - group.lastStream < STREAM_FRESH_MS;
+      if (live && !force) return;
+      group.nextAt = now + POLL_MS - 500;
+      const res = await fetch(group.url + "/json?poll=1&since=" + encodeURIComponent(group.since || "all"), {
         cache: "no-store",
         mode: "cors",
       });
+      if (res.status === 429) {
+        group.backoff = Math.min(group.backoff ? group.backoff * 2 : 30000, 300000);
+        group.nextAt = Date.now() + group.backoff;
+        return;
+      }
       if (!res.ok) return;
+      group.backoff = 0;
       const text = await res.text();
-      text.split("\n").map((line) => line.trim()).filter(Boolean).forEach((line) => parseLine(url, line));
+      text.split("\n").map((line) => line.trim()).filter(Boolean).forEach((line) => takeBusLine(group, line));
     }
 
-    async function pull() {
-      await Promise.all(BUSES.map((url) => pullOne(url).catch(() => {})));
+    async function pull(force) {
+      if (document.hidden) return;
+      await Promise.all(busGroups.map((group) => pullGroup(group, force === true).catch(() => {})));
+    }
+
+    function openStreams() {
+      busGroups.forEach((group) => {
+        if (group.stream && group.stream.readyState !== 2) return;
+        try {
+          const stream = new EventSource(group.url + "/sse");
+          group.stream = stream;
+          stream.onopen = () => { group.lastStream = Date.now(); };
+          stream.onmessage = (event) => { group.lastStream = Date.now(); takeBusLine(group, event.data); };
+          stream.addEventListener("keepalive", () => { group.lastStream = Date.now(); });
+          stream.addEventListener("open", () => { group.lastStream = Date.now(); });
+        } catch (e) {}
+      });
     }
 
     function startMqtt() {
@@ -493,7 +558,14 @@
       }).catch(function () {});
     }
 
+    const EMAIL_OK = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)*\.[A-Za-z]{2,}$/;
+    let starting = false;
+    document.getElementById("m").addEventListener("input", () => {
+      const err = document.getElementById("err");
+      if (!err.classList.contains("hidden") && EMAIL_OK.test(document.getElementById("m").value.trim())) showErr("");
+    });
     document.getElementById("start").onclick = () => {
+      if (starting) return;
       const name = document.getElementById("n").value.trim();
       const phone = document.getElementById("t").value.trim();
       const email = document.getElementById("m").value.trim();
@@ -501,6 +573,13 @@
         showErr("Enter your name, telephone and email.");
         return;
       }
+      if (!EMAIL_OK.test(email)) {
+        showErr("Please enter a valid email so Adam can reply");
+        document.getElementById("m").focus();
+        return;
+      }
+      starting = true;
+      document.getElementById("start").disabled = true;
       showErr("");
       thread = {
         id: makeId(email, name),
@@ -563,16 +642,18 @@
     } catch (e) {}
 
     startMqtt();
-    BUSES.forEach((url) => {
-      try {
-        const stream = new EventSource(url + "/sse");
-        stream.onmessage = (event) => parseLine(url, event.data);
-      } catch (e) {}
-    });
-    pull();
+    openStreams();
+    pull(true);
     pullDesk();
-    setInterval(pull, 1500);
-    setInterval(pullDesk, 2000);
+    setInterval(pull, POLL_MS);
+    setInterval(function () { if (!document.hidden) pullDesk(); }, 2000);
+    setInterval(openStreams, 30000);
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) return;
+      openStreams();
+      pull(true);
+      pullDesk();
+    });
 
     let touchY = 0;
     document.addEventListener("touchstart", (e) => {
