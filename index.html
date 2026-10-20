@@ -21,11 +21,12 @@
     .brand p { margin:0; color:#d5dde4; font-size:12px; letter-spacing:.14em; text-transform:uppercase; }
     .sheet { padding:16px 22px 18px; flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:#c5ccd4; }
     h1 { font-family:Fraunces,Georgia,serif; font-size:26px; font-weight:400; line-height:1.15; margin:0 0 10px; }
-    .intro { font-size:16px; line-height:1.4; color:#09161f; margin:0 0 10px; }
+    .intro { font-size:16px; line-height:1.32; color:#09161f; margin:0 0 10px; }
     .intro strong { font-weight:500; }
-    label { display:block; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); margin:0 0 4px; }
-    .field { margin:0 0 8px; }
-    input { width:100%; background:transparent; border:0; border-bottom:1px solid #b7c0c8; color:var(--text); font:400 16px Outfit,sans-serif; padding:8px 0 8px; outline:none; }
+    .intro .ask { font-weight:600; font-size:14px; }
+    label { display:block; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); margin:0; }
+    .field { margin:0 0 4px; }
+    input { width:100%; background:transparent; border:0; border-bottom:1px solid #b7c0c8; color:var(--text); font:400 16px Outfit,sans-serif; padding:4px 0 5px; outline:none; }
     input::placeholder { color:#5c6b78; }
     input:focus { border-bottom-color:#09161f; }
     .go, .talk { border:1px solid #09161f; border-radius:999px; background:#fff; color:#09161f; cursor:pointer; }
@@ -60,7 +61,7 @@
       </header>
       <div class="sheet">
       <div class="shot-frame hidden" id="shot-frame"><img id="shot-form" alt="" /></div>
-      <p class="intro">Hi, I’m <strong>Adam</strong>.<br />If you want to talk, you can talk to me here.<br />First I need your name, telephone and email.</p>
+      <p class="intro">Hi, I’m <strong>Adam</strong>.<br />I’ll be notified there’s a chat and you can talk to me here. If I’m not available, my AI assistant will answer.<br /><span class="ask">Please enter your name, email and phone number.</span></p>
       <div class="field"><label for="n">Name</label><input id="n" autocomplete="name" /></div>
       <div class="field"><label for="t">Telephone</label><input id="t" autocomplete="tel" /></div>
       <div class="field"><label for="m">Email</label><input id="m" autocomplete="email" /></div>
