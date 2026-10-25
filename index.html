@@ -23,7 +23,7 @@
     h1 { font-family:Fraunces,Georgia,serif; font-size:26px; font-weight:400; line-height:1.15; margin:0 0 10px; }
     .intro { font-size:16px; line-height:1.25; color:#09161f; margin:0 0 6px; }
     .intro strong { font-weight:500; }
-    .intro .sub { display:inline-block; font-size:12px; line-height:1.3; margin:2px 0; }
+    .intro .sub { display:inline-block; color:#6b7280; font-size:12px; line-height:1.35; margin:2px 0; }
     .intro .ask { font-weight:500; font-size:min(15px, calc((100vw - 68px) / 19)); white-space:nowrap; }
     .intro .looking, .intro .house-ask { display:block; }
     /* fits one line from 360px up: the sheet's text width is 100vw - 68px and the line is ~21.8em wide */
@@ -56,6 +56,11 @@
     .consent a { color:#58D6D2; text-decoration:underline; text-underline-offset:2px; }
     .go:disabled { opacity:.45; cursor:not-allowed; }
     .hidden { display:none !important; }
+    /* Form: plain black labels, typed text, underlines and start button (normal weight) */
+    #form label:not(.consent) { color:#000; font-weight:400; }
+    #form .field input { color:#000; border-bottom-color:#000; font-weight:400; }
+    #form .field input::placeholder { color:#000; opacity:1; }
+    #form .go, #form .go:disabled { color:#000; border-color:#000; opacity:1; font-weight:400; }
     /* Short phone screens: keep the whole form, including the button, on screen without scrolling */
     @media (max-height:760px) {
       .shell { padding:8px; }
