@@ -108,6 +108,9 @@
     const houseUrl = param("house");
     const placeName = param("place").trim() || houseTitle(houseUrl);
     const houseLine = placeName || (houseUrl ? "one of Adam's houses" : "");
+    // Source tag from the website (?src=Instagram) or a tagged link/QR (?from=qr). The desk maps it to a DealTracker
+    // Source for the new enquiry; no tag = "Talk to Adam" as before.
+    const visitSource = (param("src") || param("from") || param("utm_source")).trim().slice(0, 40);
     function safePhoto(url) {
       try {
         const parsed = new URL(url);
@@ -607,6 +610,7 @@
         email: email,
         teaser: houseLine || "New chat from Talk to Adam",
         meta: placeName || (houseUrl ? "House" : "Talk to Adam"),
+        source: visitSource || undefined,
         takenOver: false,
         started: Date.now(),
         consent: true,
