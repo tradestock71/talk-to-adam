@@ -56,6 +56,11 @@
     .consent a { color:#58D6D2; text-decoration:underline; text-underline-offset:2px; }
     .go:disabled { opacity:.45; cursor:not-allowed; }
     .hidden { display:none !important; }
+    /* Form: plain black labels, typed text, underlines and start button (normal weight) */
+    #form label:not(.consent) { color:#000; font-weight:400; }
+    #form .field input { color:#000; border-bottom-color:#000; font-weight:400; }
+    #form .field input::placeholder { color:#000; opacity:1; }
+    #form .go, #form .go:disabled { color:#000; border-color:#000; opacity:1; font-weight:400; }
     /* Short phone screens: keep the whole form, including the button, on screen without scrolling */
     @media (max-height:760px) {
       .shell { padding:8px; }
