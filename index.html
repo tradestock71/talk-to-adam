@@ -24,7 +24,9 @@
     .intro { font-size:16px; line-height:1.25; color:#09161f; margin:0 0 6px; }
     .intro strong { font-weight:500; }
     .intro .sub { display:inline-block; font-size:12px; line-height:1.3; margin:2px 0; }
-    .intro .ask { font-weight:600; font-size:15px; white-space:nowrap; }
+    .intro .ask { font-weight:500; font-size:15px; white-space:nowrap; }
+    .intro .looking, .intro .house-ask { display:block; }
+    .intro .house-sub { display:block; color:#6b7280; font-size:12px; line-height:1.35; margin:6px 0 8px; }
     label { display:block; font-size:9px; line-height:1.1; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); margin:0; }
     .field { margin:0 0 3px; }
     input { width:100%; background:transparent; border:0; border-bottom:1px solid #b7c0c8; color:var(--text); font:400 16px Outfit,sans-serif; padding:1px 0 2px; line-height:1.2; outline:none; }
@@ -180,14 +182,21 @@
       }
     }
     if (houseLine) {
+      // Opened for a specific house: "You're looking at the <title> in <area> (ref <ref>)." + Adam's note + the ask.
       const intro = document.querySelector("#form .intro");
+      const m = placeName.match(/^(.*?),\s*ref\.?\s+(\S+)$/i);
+      const looking = m ? "the " + m[1].trim() + " (ref " + m[2] + ")" : houseLine;
       intro.textContent = "";
       const line = document.createElement("span");
-      line.textContent = "You are looking at " + houseLine + ".";
-      line.style.display = "block";
-      line.style.marginBottom = "1em";
-      intro.appendChild(line);
-      intro.appendChild(document.createTextNode("First I need your name, telephone and email."));
+      line.className = "looking";
+      line.textContent = "You\u2019re looking at " + looking + ".";
+      const sub = document.createElement("span");
+      sub.className = "sub house-sub";
+      sub.textContent = "Hi, I\u2019m Adam. I\u2019ve been notified there\u2019s a chat, and you can talk to me here. If I\u2019m not available, my AI assistant will answer.";
+      const ask = document.createElement("span");
+      ask.className = "house-ask";
+      ask.textContent = "First, I need your name, phone number and email.";
+      intro.append(line, sub, ask);
     }
     let thread = null;
     let lastIds = {};
