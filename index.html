@@ -353,36 +353,67 @@
       render();
     }
 
+    // Chats are stored in DealTracker's own database (Live Chat panel). The first post starts the chat and
+    // returns a private key; later posts/reads send it back, so this page can only see its own chat.
+    const TRACKER_DESK = "https://dealtracker-flame.vercel.app/api/desk/public";
+    let deskBusy = false;
+
+    // The key is kept in this browser only, never inside the thread (the thread also goes out on the public live topic).
+    const DESK_KEYS = "ywa.adam.deskkeys.v1";
+    function deskKeys() {
+      try { return JSON.parse(localStorage.getItem(DESK_KEYS) || "{}") || {}; } catch (e) { return {}; }
+    }
+    function deskKey() {
+      return (thread && deskKeys()[thread.id]) || "";
+    }
+    function setDeskKey(id, key) {
+      const all = deskKeys();
+      all[id] = key;
+      try { localStorage.setItem(DESK_KEYS, JSON.stringify(all)); } catch (e) {}
+    }
+
     function postDesk() {
-      if (!thread || !thread.id) return;
-      const id = meterId();
-      fetch("https://your-work-agent.vercel.app/api/adam-desk", {
+      if (!thread || !thread.id || deskBusy) return;
+      deskBusy = true;
+      const key = deskKey();
+      fetch(TRACKER_DESK, {
         method: "POST",
         mode: "cors",
         cache: "no-store",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "text/plain" },
         body: JSON.stringify({
-          rev: Date.now(),
-          base: 0,
-          partial: true,
-          threads: [thread],
-          houses: [],
-          seen: {},
-          meter: id ? [{ id: id, month: monthKey() }] : [],
-          droppedHouses: [],
+          key: key || undefined,
+          thread: {
+            id: thread.id,
+            name: thread.name,
+            phone: thread.phone,
+            email: thread.email,
+            meta: thread.meta,
+            started: thread.started,
+            messages: thread.messages || [],
+          },
         }),
-      }).then((res) => (res.ok ? res.json() : null)).then((doc) => {
-        if (doc) applyAccountThreads(doc.threads);
-      }).catch(function () {});
+      }).then((res) => {
+        if (res.status === 409 && !key) {
+          // Same email already has a chat from another browser: start this one under a fresh id.
+          thread.id = makeId(thread.email, thread.name) + "." + Date.now().toString(36);
+          save();
+          return null;
+        }
+        return res.ok ? res.json() : null;
+      }).then((doc) => {
+        if (doc && doc.key && !key) setDeskKey(thread.id, doc.key);
+        if (doc && doc.thread) applyAccountThreads([doc.thread]);
+      }).catch(function () {}).finally(function () { deskBusy = false; });
     }
 
     async function pullDesk() {
-      if (!thread) return;
+      if (!thread || !deskKey()) return;
       try {
-        const res = await fetch("https://your-work-agent.vercel.app/api/adam-desk", { cache: "no-store", mode: "cors" });
+        const res = await fetch(TRACKER_DESK + "?id=" + encodeURIComponent(thread.id) + "&key=" + encodeURIComponent(deskKey()), { cache: "no-store", mode: "cors" });
         if (!res.ok) return;
         const doc = await res.json();
-        applyAccountThreads(doc.threads);
+        if (doc && doc.thread) applyAccountThreads([doc.thread]);
       } catch (e) {}
     }
 
@@ -733,3 +764,4 @@
   </script>
 </body>
 </html>
+
