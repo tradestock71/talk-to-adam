@@ -44,6 +44,7 @@
     .err { color:#9a3b3b; font-size:14px; margin:0 0 12px; }
     .chat { display:flex; height:100%; min-height:0; flex-direction:column; }
     .log { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:22px; display:flex; flex-direction:column; gap:14px; background:#c5ccd4; }
+    .msg.typing { color:var(--mute); font-style:italic; }
     .msg { max-width:80%; padding:13px 15px; border-radius:18px; font-size:15px; line-height:1.45; white-space:pre-wrap; }
     .them { align-self:flex-start; background:#fff; color:#09161f; border:1px solid #09161f; }
     .me { align-self:flex-end; background:#09161f; color:#fff; }
@@ -249,12 +250,65 @@
       return (list || []).filter((m, i) => !(i === 0 && m.who === "them" && String(m.text).includes("\n")));
     }
 
+    // AI replies are held back 4-10s (by length) from when the customer sent, behind "Adam is typing…",
+    // so they don't land in 1 second. The reply is already saved in the thread (a refresh keeps it);
+    // only its showing waits. No hold and no typing once Adam has taken over, or after the chat ended.
+    const TYPE_MIN_MS = 4000, TYPE_MAX_MS = 10000, TYPE_MS_PER_CHAR = 40, TYPE_WAIT_MS = 25000;
+    let revealTimer = null;
+    function replyDelay(text) {
+      return Math.min(TYPE_MAX_MS, TYPE_MIN_MS + String(text || "").length * TYPE_MS_PER_CHAR);
+    }
+    function aiActive() {
+      return !!thread && !thread.takenOver && !thread.ended;
+    }
+    function holdKey(m) { return m.who + "\u0000" + m.text; }
+    // Called after new messages are merged in: hold any new 'me' reply while the AI is answering.
+    function holdNew(before) {
+      if (!thread || !aiActive()) return;
+      const list = thread.messages || [];
+      if (list.length <= before) return;
+      thread.holds = thread.holds || {};
+      const base = thread.sentAt || Date.now();
+      for (let i = Math.max(before, 2); i < list.length; i++) {
+        const m = list[i];
+        if (!m || m.who !== "me" || thread.holds[holdKey(m)]) continue;
+        thread.holds[holdKey(m)] = base + replyDelay(m.text);
+      }
+    }
+    function isHeld(m) {
+      if (!thread || !thread.holds || m.who !== "me" || !aiActive()) return false;
+      const at = thread.holds[holdKey(m)];
+      return !!at && at > Date.now();
+    }
+    function typingNow(messages) {
+      if (!aiActive()) return false;
+      if (messages.some(isHeld)) return true;
+      const last = messages[messages.length - 1];
+      return !!last && last.who === "them" && messages.length > 1 && !!thread.sentAt
+        && Date.now() - thread.sentAt > 600 && Date.now() - thread.sentAt < TYPE_WAIT_MS;
+    }
+    function scheduleReveal(messages) {
+      clearTimeout(revealTimer);
+      revealTimer = null;
+      if (!thread) return;
+      const now = Date.now();
+      let next = Infinity;
+      Object.values(thread.holds || {}).forEach((at) => { if (at > now) next = Math.min(next, at); });
+      if (thread.sentAt) {
+        if (thread.sentAt + 600 > now) next = Math.min(next, thread.sentAt + 600);
+        else if (thread.sentAt + TYPE_WAIT_MS > now) next = Math.min(next, thread.sentAt + TYPE_WAIT_MS);
+      }
+      if (next !== Infinity) revealTimer = setTimeout(render, Math.max(50, next - now + 20));
+    }
+
     function render() {
       const log = document.getElementById("log");
-      const messages = visibleMessages(thread && thread.messages);
+      const all = visibleMessages(thread && thread.messages);
+      const messages = all.filter((m) => !isHeld(m));
       log.innerHTML = messages.map((m) =>
         '<div class="msg ' + (m.who === "them" ? "me" : "them") + '">' + escapeHtml(m.text) + "</div>"
-      ).join("");
+      ).join("") + (typingNow(messages) ? '<div class="msg them typing">Adam is typing\u2026</div>' : "");
+      scheduleReveal(messages);
       log.scrollTop = log.scrollHeight;
       showEnded();
     }
@@ -356,10 +410,14 @@
         || rows.find((row) => matches(row));
       if (!found || !Array.isArray(found.messages)) return;
       if (found.ended && !thread.ended) { thread.ended = true; save(); render(); }
+      if (typeof found.takenOver === "boolean" && found.takenOver !== !!thread.takenOver) {
+        thread.takenOver = found.takenOver; save(); render();
+      }
       const before = (thread.messages || []).length;
       thread.messages = mergeMessages(thread.messages, found.messages);
       if (found.id) thread.altId = found.id;
       if ((thread.messages || []).length === before) return;
+      holdNew(before);
       const last = thread.messages[thread.messages.length - 1];
       thread.teaser = last ? last.text : thread.teaser;
       save();
@@ -495,7 +553,9 @@
       }
       if (!event || !event.type || !thread) return;
       if (event.type === "upsert" && event.thread && matches(event.thread)) {
+        const before = (thread.messages || []).length;
         thread.messages = mergeMessages(thread.messages, event.thread.messages);
+        holdNew(before);
         thread.altId = event.thread.id;
         thread.teaser = thread.messages[thread.messages.length - 1] ? thread.messages[thread.messages.length - 1].text : thread.teaser;
         save();
@@ -504,7 +564,9 @@
       }
       if (event.type === "msg" && event.text && (event.id === thread.id || event.id === thread.altId || matches({ id: event.id }))) {
         if (sameLast(event.who, event.text)) return;
+        const before = (thread.messages || []).length;
         thread.messages = (thread.messages || []).concat([{ who: event.who, text: event.text }]);
+        holdNew(before);
         thread.teaser = event.text;
         save();
         render();
@@ -720,6 +782,7 @@
       if (sameLast("them", text)) return;
       thread.messages.push({ who: "them", text: text });
       thread.teaser = text;
+      thread.sentAt = Date.now();
       save();
       render();
       nudge();
