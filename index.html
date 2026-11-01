@@ -256,6 +256,18 @@
         '<div class="msg ' + (m.who === "them" ? "me" : "them") + '">' + escapeHtml(m.text) + "</div>"
       ).join("");
       log.scrollTop = log.scrollHeight;
+      showEnded();
+    }
+
+    // Adam's AI assistant ended this chat (rude/abusive messages): stop the input, no reply.
+    function showEnded() {
+      if (!thread || !thread.ended) return;
+      const box = document.getElementById("draft");
+      const btn = document.getElementById("send");
+      box.disabled = true;
+      btn.disabled = true;
+      box.value = "";
+      box.placeholder = "This chat has ended.";
     }
 
     function openChat() {
@@ -343,6 +355,7 @@
       const found = rows.find((row) => row && (row.id === thread.id || row.id === thread.altId))
         || rows.find((row) => matches(row));
       if (!found || !Array.isArray(found.messages)) return;
+      if (found.ended && !thread.ended) { thread.ended = true; save(); render(); }
       const before = (thread.messages || []).length;
       thread.messages = mergeMessages(thread.messages, found.messages);
       if (found.id) thread.altId = found.id;
@@ -355,7 +368,12 @@
 
     // Chats are stored in DealTracker's own database (Live Chat panel). The first post starts the chat and
     // returns a private key; later posts/reads send it back, so this page can only see its own chat.
-    const TRACKER_DESK = "https://dealtracker-flame.vercel.app/api/desk/public";
+    // ?desk=<DealTracker preview host> lets a preview of the tracker be tested; only dealtracker-*.vercel.app is accepted.
+    const TRACKER_DESK = (function () {
+      const d = param("desk");
+      if (/^dealtracker-[a-z0-9-]+\.vercel\.app$/.test(d)) return "https://" + d + "/api/desk/public";
+      return "https://dealtracker-flame.vercel.app/api/desk/public";
+    })();
     let deskBusy = false;
 
     // The key is kept in this browser only, never inside the thread (the thread also goes out on the public live topic).
@@ -389,6 +407,7 @@
             phone: thread.phone,
             email: thread.email,
             meta: thread.meta,
+            house: houseUrl || undefined,
             started: thread.started,
             messages: thread.messages || [],
           },
@@ -696,7 +715,7 @@
     function send() {
       const box = document.getElementById("draft");
       const text = box.value.trim();
-      if (!text || !thread) return;
+      if (!text || !thread || thread.ended) return;
       box.value = "";
       if (sameLast("them", text)) return;
       thread.messages.push({ who: "them", text: text });
